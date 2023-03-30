@@ -1,6 +1,6 @@
 // Serial communication
 import processing.serial.*;
-String serialPortName = "COM14";
+String serialPortName = "COM11";
 Serial serialPort; // Serial port object
 
 public class Position {
@@ -18,9 +18,9 @@ public class Position {
 };
 
 // Visualization
-static final int gridSize = 100; // The size of each square in the grid
-static final int gridWidth = 100; // The width of the grid in squares
-static final int gridHeight = 100; // The height of the grid in squares
+static final int gridSize = 54; // (int)(1000/18.0); // The size of each square in the grid
+static final int gridWidth = 19; // The width of the grid in squares
+static final int gridHeight = 19; // The height of the grid in squares
 
 void drawGridMap() {
   // Draw the grid
@@ -35,7 +35,7 @@ void drawGridMap() {
 
 void drawObject(Position pos) {
     // Draw the object
-  fill(127, 255, 0);
+  fill(255, 0, 0);
   rect(pos.getX() * gridSize, pos.getY() * gridSize, gridSize, gridSize);  
 }
 
@@ -66,15 +66,15 @@ Position getPositionUpdate() {
 }
 
 void setup() {
-  size(1000, 1000);
+  size(1026, 1026);
   drawGridMap();
-  Position base1 = new Position(0,0);
-  Position base2 = new Position(9, 0);
-  Position base3 = new Position(0, 9);
+  Position base1 = new Position(0, 0);
+  Position base2 = new Position(18, 0);
+  Position base3 = new Position(0, 18);
   
-  drawBase(base1, 0, 0, 255);
-  drawBase(base2,255, 0, 0);
-  drawBase(base3, 0, 255, 0);
+  drawBase(base1, 0, 0, 0); // blue
+  drawBase(base2, 0, 0, 0); // red
+  drawBase(base3, 0, 0, 0); // green
   
   serialPort = new Serial(this, serialPortName, 9600);
 }

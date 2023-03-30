@@ -1,10 +1,10 @@
 // Debug
 #define DEBUG_MODE
 #ifdef DEBUG_MODE
-  // #define DEBUG_BASE_1
+  #define DEBUG_BASE_1
   #define DEBUG_BASE_2
-  // #define DEBUG_BASE_3
-  #define DEBUG_COMPUTING
+  #define DEBUG_BASE_3
+  // #define DEBUG_COMPUTING
 #endif
 
 #include <SPI.h>              // include libraries
@@ -21,18 +21,27 @@
 
 #define BASE_1_TX_POWER 17.0        // LoRa radio transmit power in dBm
 #define BASE_1_TX_GAIN 2.0
-#define BASE_1_REF_RSSI -118     // Reference RSSI value at 1m distance
-#define BASE_1_RSSI_CAL_FACTOR 4.9583  // Calibration factor for RSSI
+#define BASE_1_REF_RSSI -100     // Reference RSSI value at 1m distance
+#define BASE_1_RSSI_CAL_FACTOR 2.25379  // Calibration factor for RSSI
+#define BASE_1_X 0
+#define BASE_1_Y 0 
+#define BASE_1_Z 0
 
 #define BASE_2_TX_POWER 17.0        // LoRa radio transmit power in dBm
 #define BASE_2_TX_GAIN 2.0
-#define BASE_2_REF_RSSI -103     // Reference RSSI value at 1m distance
-#define BASE_2_RSSI_CAL_FACTOR 1.1475  // Calibration factor for RSSI
+#define BASE_2_REF_RSSI -100     // Reference RSSI value at 1m distance
+#define BASE_2_RSSI_CAL_FACTOR 2.25379  // Calibration factor for RSSI
+#define BASE_2_X 1800
+#define BASE_2_Y 0 
+#define BASE_2_Z 0
 
 #define BASE_3_TX_POWER 17.0        // LoRa radio transmit power in dBm
 #define BASE_3_TX_GAIN 2.0
-#define BASE_3_REF_RSSI -68     // Reference RSSI value at 1m distance
-#define BASE_3_RSSI_CAL_FACTOR 4.9583  // Calibration factor for RSSI
+#define BASE_3_REF_RSSI -100     // Reference RSSI value at 1m distance
+#define BASE_3_RSSI_CAL_FACTOR 2.25379  // Calibration factor for RSSI
+#define BASE_3_X 0
+#define BASE_3_Y 1800 
+#define BASE_3_Z 0
 
 // Indicator
 #define INDICATOR_LED 17
@@ -107,7 +116,7 @@ double calculateDistance(double p_tx, double rssi, double rssi_1m, double n, dou
 }
 
 /**************************************************/
-Point base1(0, 0, 0), base2(1500, 0, 0), base3(0, 1500, 0), movingObject(0, 0, 0);
+Point base1(BASE_1_X, BASE_1_Y, BASE_1_Z), base2(BASE_2_X, BASE_2_Y, BASE_2_Z), base3(BASE_3_X, BASE_3_Y, BASE_3_Z), movingObject(0, 0, 0);
 float dist2Base1, dist2Base2, dist2Base3;
 
 /**************************************************/
@@ -125,6 +134,8 @@ void setup() {
   LoRa.setPins(nss, rst, dio0);
   while (!initSucceeded) {
     initSucceeded = LoRa.begin(433E6);
+    LoRa.onReceive(onReceive);
+    LoRa.receive();
     blink();
   }
   stand();
@@ -134,13 +145,14 @@ void setup() {
   #endif
 }
 
-void loop() {
-  // Serial.println("Waiting for signal...");
-  int packetSize = LoRa.parsePacket();
+float computeDistance(int rssi, int ref, float pathLossFactor) {
+  return pow(10, (-rssi + ref) / (double)(10.0 * pathLossFactor)) * 1000;
+}
+
+void onReceive(int packetSize) {
+
   if (packetSize) {
-    // Serial.println("Received a signal");
     int rssi = LoRa.packetRssi();
-    bool isUpdated = false;
 
     // Get Tx mess
     String baseName = "";
@@ -149,32 +161,27 @@ void loop() {
     }
 
     if (baseName.compareTo("Base1")==0) {
-      dist2Base1 = pow(10, (-rssi + BASE_1_REF_RSSI) / (double)(10.0 * BASE_1_RSSI_CAL_FACTOR)) * 1000;
-      isUpdated = true;
+      dist2Base1 = computeDistance(rssi, BASE_1_REF_RSSI, BASE_1_RSSI_CAL_FACTOR);  // pow(10, (-rssi + BASE_1_REF_RSSI) / (double)(10.0 * BASE_1_RSSI_CAL_FACTOR)) * 1000;
     }
     else if (baseName.compareTo("Base2")==0) {
-      dist2Base2 = pow(10, (-rssi + BASE_2_REF_RSSI) / (double)(10.0 * BASE_2_RSSI_CAL_FACTOR)) * 1000;
-      isUpdated = true;
+      dist2Base2 = computeDistance(rssi, BASE_2_REF_RSSI, BASE_2_RSSI_CAL_FACTOR);  // pow(10, (-rssi + BASE_2_REF_RSSI) / (double)(10.0 * BASE_2_RSSI_CAL_FACTOR)) * 1000;
     }
     else if (baseName.compareTo("Base3")==0) {
-      dist2Base3 = pow(10, (-rssi + BASE_3_REF_RSSI) / (double)(10.0 * BASE_3_RSSI_CAL_FACTOR)) * 1000;
-      isUpdated = true;
+      dist2Base3 = computeDistance(rssi, BASE_3_REF_RSSI, BASE_3_RSSI_CAL_FACTOR);  // pow(10, (-rssi + BASE_3_REF_RSSI) / (double)(10.0 * BASE_3_RSSI_CAL_FACTOR)) * 1000;
     }    
 
-    if (isUpdated) {
-      movingObject.trilaterate(base1, dist2Base1,
-                      base2, dist2Base2,
-                      base3, dist2Base3);
-    }
+    movingObject.trilaterate(base1, dist2Base1,
+                    base2, dist2Base2,
+                    base3, dist2Base3);
 
     #ifdef DEBUG_BASE_1
       if (baseName.compareTo("Base1")==0) {
         Serial.print("RSSI: ");
         Serial.println(rssi);
         Serial.print("Distance to ");
-        Serial.print(dist2Base1);
+        Serial.print(baseName);
         Serial.print(": ");
-        Serial.println(distance);
+        Serial.println(dist2Base1);
         Serial.println(" mm");
       }
     #endif
@@ -203,15 +210,8 @@ void loop() {
     #ifdef DEBUG_COMPUTING
       Serial.println(String((int)movingObject.x) + " " + String((int)movingObject.y));
     #endif
-    // #else
-    //   lcd.clear();
-    //   lcd.setCursor(0, 0);
-    //   lcd.print("Str=" + String(abs(rssiFilter.updateEstimate(rssi))));
-    //   lcd.setCursor(0, 1);
-    //   lcd.print("Dis=" + String(distance) +"m");      
-    // #endif
   }
-
-  // delay(2000);
 }
 
+void loop() {
+}
